@@ -30,7 +30,7 @@ bot = telebot.TeleBot(TOKEN)
 # table_name = "Здоровье"
 # workfile = gc.open(table_name)
 
-current_index = 0
+current_index = -1
 
 def get_table_scope():
     SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
@@ -114,7 +114,7 @@ def next_data(call):
         print(delta)
 
         txt = f"""{date} {when}
-{name}
+💊{name}
 Прием:
  С {from_.strftime('%Y-%m-%d')}
 ПО {to.strftime('%Y-%m-%d')}
