@@ -1,4 +1,5 @@
 import time
+import traceback
 from datetime import datetime
 import os
 from os.path import join, dirname, abspath
@@ -29,6 +30,7 @@ bot = telebot.TeleBot(TOKEN)
 # table_name = "Здоровье"
 # workfile = gc.open(table_name)
 
+current_index = 0
 
 def get_table_scope():
     SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
@@ -60,7 +62,7 @@ def get_table_scope():
 
     df['line'] = df['line'].astype(int)
     df = df.sort_values(by='line').reset_index(drop=True)
-    print(df)
+    #print(df)
     return df
 
 # Определяем обработчик команды /start
@@ -98,8 +100,8 @@ def next_data(call):
         inline_keyboard = types.InlineKeyboardMarkup()
         inline_keyboard.add(next_button)
 
-        df['from'] = pd.to_datetime(df['from'])
-        df['to'] = pd.to_datetime(df['to'])
+        df['from'] = pd.to_datetime(df['from'], dayfirst=True)
+        df['to'] = pd.to_datetime(df['to'], dayfirst=True)
         date = df.loc[current_index, 'date']
         when = df.loc[current_index, 'when']
         name = df.loc[current_index, 'name']
@@ -140,6 +142,7 @@ if __name__ == "__main__":
         except Exception as e:
             print('Произошла ошибка: ', e)
             print('Перезапуск бота через 10 секунд...')
+            traceback.print_exc()
             time.sleep(10)
 
 
