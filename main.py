@@ -1,3 +1,4 @@
+import asyncio
 import time
 import traceback
 from datetime import datetime
@@ -5,8 +6,11 @@ import os
 from os.path import join, dirname, abspath
 
 import pandas as pd
-import telebot
-from telebot import types
+
+from aiogram import Bot, Dispatcher, Router, types
+from aiogram.enums import ParseMode
+from aiogram.filters import CommandStart, Command
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -23,16 +27,14 @@ TOKEN = os.environ.get("TELEGRAM_TOKEN")
 SAMPLE_SPREADSHEET_ID = os.environ.get("SAMPLE_SPREADSHEET_ID")
 SAMPLE_RANGE_NAME = os.environ.get("SAMPLE_RANGE_NAME")
 
-# Создаем экземпляр бота, используя полученный токен
-bot = telebot.TeleBot(TOKEN)
-
-# gc = gspread.service_account(path_to_credentials)
-# table_name = "Здоровье"
-# workfile = gc.open(table_name)
+bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
+dp = Dispatcher()
 
 current_index = -1
 
-def get_table_scope():
+next_button = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Далее', callback_data='next')]])
+
+async def get_table_scope():
     SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
     SERVICE_ACCOUNT_FILE = os.path.join(abspath, 'service_account.json')
 
@@ -65,9 +67,9 @@ def get_table_scope():
     #print(df)
     return df
 
-# Определяем обработчик команды /start
-@bot.message_handler(commands=['start'])
-def start(message):
+
+@dp.message(Command("start"))
+async def start_bot(message: Message):
     global current_index
     current_index = -1
     welcome_message = """
@@ -75,70 +77,83 @@ def start(message):
 Помогу тебе с приемом лекарств."""
 
     # Создаем Inline-клавиатуру
-    inline_keyboard = types.InlineKeyboardMarkup()
-    next_button = types.InlineKeyboardButton("Далее", callback_data='next')
-    inline_keyboard.add(next_button)
+
+
+    #next_button = types.InlineKeyboardButton(text='Далее', callback_data='next')
+    #inline_keyboard = types.InlineKeyboardMarkup.add(next_button)
 
     # Отправляем приветственное сообщение с Inline-клавиатурой
-    bot.send_message(message.chat.id, welcome_message, reply_markup=inline_keyboard, disable_notification=True)
+    await bot.send_message(message.chat.id, welcome_message, reply_markup=next_button, disable_notification=True)
 
 # Обработчик нажатия на кнопку "Далее"
-@bot.callback_query_handler(func=lambda call: call.data == 'next')
-def next_data(call):
-    chat_id = call.message.chat.id
-    global current_index
-    current_index += 1
+#@dp.callback_query(func=lambda call: call.data == 'next')
+@dp.callback_query()
+async def next_data(call: types.CallbackQuery):
+    if call.data == 'next':
 
-    df = get_table_scope()
+        chat_id = call.message.chat.id
+        global current_index
+        current_index += 1
 
-    if current_index < len(df):
-        # Отправка следующей строки данных
-        #send_next_data(chat_id)
-        #bot.send_message(chat_id, current_index)
+        df = await get_table_scope()
 
-        next_button = types.InlineKeyboardButton("Далее", callback_data='next')
-        inline_keyboard = types.InlineKeyboardMarkup()
-        inline_keyboard.add(next_button)
+        if current_index < len(df):
+            # Отправка следующей строки данных
+            #send_next_data(chat_id)
+            #bot.send_message(chat_id, current_index)
 
-        df['from'] = pd.to_datetime(df['from'], dayfirst=True)
-        df['to'] = pd.to_datetime(df['to'], dayfirst=True)
-        date = df.loc[current_index, 'date']
-        when = df.loc[current_index, 'when']
-        name = df.loc[current_index, 'name']
-        from_ = df.loc[current_index, 'from']
-        to = df.loc[current_index, 'to']
+            # next_button = types.InlineKeyboardButton("Далее", callback_data='next')
+            # inline_keyboard = types.InlineKeyboardMarkup()
+            # inline_keyboard.add(next_button)
 
-        date_now = datetime.now()  # .strftime('%Y-%m-%d')
-        delta = to.date() - date_now.date()
-        delta = delta.days
-        print(delta)
+            df['from'] = pd.to_datetime(df['from'], dayfirst=True)
+            df['to'] = pd.to_datetime(df['to'], dayfirst=True)
+            date = df.loc[current_index, 'date']
+            when = df.loc[current_index, 'when']
+            name = df.loc[current_index, 'name']
+            from_ = df.loc[current_index, 'from']
+            to = df.loc[current_index, 'to']
 
-        txt = f"""{date} {when}
+            date_now = datetime.now()  # .strftime('%Y-%m-%d')
+            delta = to.date() - date_now.date()
+            delta = delta.days
+            print(delta)
+
+            txt = f"""{date} {when}
 💊{name}
 Прием:
  С {from_.strftime('%Y-%m-%d')}
 ПО {to.strftime('%Y-%m-%d')}
-Осталось: {delta} д."""
+Осталось: {delta} д.
+"""
 
-        if pd.to_datetime(from_) <= date_now < pd.to_datetime(to):
-            print(txt)
-            bot.send_message(call.message.chat.id,
-                             txt,
-                             reply_markup=inline_keyboard, disable_notification=True)
+            if pd.to_datetime(from_) <= date_now < pd.to_datetime(to):
+                print(txt)
+                await bot.send_message(call.message.chat.id,
+                                 txt,
+                                 reply_markup=next_button, disable_notification=True)
+            else:
+                txt = f'Лекарство {name} пока/уже не принимать'
+                print(txt)
+                await next_data(call)
+
         else:
-            txt = f'Лекарство {name} пока/уже не принимать'
-            print(txt)
-            next_data(call)
+            # Если достигнут конец данных
+            await bot.send_message(chat_id, 'Конец данных')
 
-    else:
-        # Если достигнут конец данных
-        bot.send_message(chat_id, 'Конец данных')
+
+async def main() -> None:
+    # Initialize Bot instance with a default parse mode which will be passed to all API calls
+    # And the run events dispatching
+    await dp.start_polling(bot)
+
 
 if __name__ == "__main__":
     print('Запуск бота')
     while True:
         try:
-            bot.polling()
+            asyncio.run(main())
+
         except Exception as e:
             print('Произошла ошибка: ', e)
             print('Перезапуск бота через 10 секунд...')
