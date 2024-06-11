@@ -13,5 +13,7 @@ WORKDIR /app/
 
 ENV PRJPATH /app/
 
+RUN chmod +x update_cont.sh
+
 # Запуск основного файла
 CMD ["python", "-um", "main"]
