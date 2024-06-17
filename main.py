@@ -70,6 +70,10 @@ async def get_table_scope():
 
 @dp.message(Command("start"))
 async def start_bot(message: Message):
+
+    global df
+    df = await get_table_scope()
+
     global current_index
     current_index = -1
     welcome_message = """
@@ -77,8 +81,6 @@ async def start_bot(message: Message):
 Помогу тебе с приемом лекарств."""
 
     # Создаем Inline-клавиатуру
-
-
     #next_button = types.InlineKeyboardButton(text='Далее', callback_data='next')
     #inline_keyboard = types.InlineKeyboardMarkup.add(next_button)
 
@@ -90,14 +92,19 @@ async def start_bot(message: Message):
 @dp.callback_query()
 async def next_data(call: types.CallbackQuery):
     if call.data == 'next':
-
         chat_id = call.message.chat.id
         global current_index
         current_index += 1
 
-        df = await get_table_scope()
+        global df
+        try:
+            len_df = len(df)
+        except:
 
-        if current_index < len(df):
+            df = await get_table_scope()
+            len_df = len(df)
+
+        if current_index < len_df:
             # Отправка следующей строки данных
             #send_next_data(chat_id)
             #bot.send_message(chat_id, current_index)
@@ -140,25 +147,19 @@ async def next_data(call: types.CallbackQuery):
         else:
             # Если достигнут конец данных
             await bot.send_message(chat_id, 'Конец данных')
+            await start_bot(call.message)
 
 
-async def main() -> None:
-    # Initialize Bot instance with a default parse mode which will be passed to all API calls
-    # And the run events dispatching
+# if __name__ == "__main__":
+#     executor.start_polling(dp, skip_updates=True)
+
+
+async def main():
     await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
     print('Запуск бота')
-    while True:
-        try:
-            asyncio.run(main())
-
-        except Exception as e:
-            print('Произошла ошибка: ', e)
-            print('Перезапуск бота через 10 секунд...')
-            traceback.print_exc()
-            time.sleep(10)
-
+    asyncio.run(main())
 
 
