@@ -1,19 +1,12 @@
-FROM python:3.10
+FROM python:3.10-slim
 
-RUN apt-get update -y
-RUN apt-get install -y python3-pip
-RUN mkdir /app/
+WORKDIR /app
 
-COPY ./requirements.txt /app/requirements.txt
+COPY requirements.txt requirements.txt
 RUN pip install --upgrade pip
-RUN pip install -r /app/requirements.txt
+RUN pip install -r requirements.txt
 
-COPY . /app/
-WORKDIR /app/
+COPY . .
 
-ENV PRJPATH /app/
+CMD ["python", "main.py"]
 
-RUN chmod +x update_cont.sh
-
-# Запуск основного файла
-CMD ["python", "-um", "main"]
