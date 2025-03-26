@@ -1,6 +1,4 @@
 import asyncio
-import time
-import traceback
 from datetime import datetime
 import os
 from os.path import join, dirname, abspath
@@ -12,10 +10,9 @@ from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-
 from dotenv import load_dotenv
+
+from utils.gs_module import get_table_scope
 
 abspath = os.path.dirname(os.path.abspath(__file__))
 dotenv_path = join(abspath, '.env')
@@ -34,43 +31,8 @@ current_index = -1
 
 next_button = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Далее', callback_data='next')]])
 
-async def get_table_scope():
-    SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-    SERVICE_ACCOUNT_FILE = os.path.join(abspath, 'service_account.json')
-
-    credentials = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-
-    service = build('sheets', 'v4', credentials=credentials).spreadsheets().values()
-
-    # Retrieve values from the spreadsheet
-    result = service.get(spreadsheetId=SAMPLE_SPREADSHEET_ID, range=SAMPLE_RANGE_NAME).execute()
-    values = result.get('values', [])
-
-    if not values:
-        raise ValueError("No data found in the specified range.")
-
-    while True:
-        try:
-            # Create a pandas DataFrame from the retrieved values
-            df = pd.DataFrame(values[1:], columns=values[0])  # Assuming headers in the first row
-            break
-
-        except ValueError as VE:
-            print('ValueError:', VE)
-            numb = int(time.time())
-            values[0].append(f'New_Col_{numb}')
-            time.sleep(5)
-
-    df['line'] = df['line'].astype(int)
-    df = df.sort_values(by='line').reset_index(drop=True)
-    #print(df)
-    return df
-
-
 @dp.message(Command("start"))
 async def start_bot(message: Message):
-
     global df
     df = await get_table_scope()
 
