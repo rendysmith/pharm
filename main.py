@@ -115,7 +115,6 @@ async def next_data(call: types.CallbackQuery):
 # if __name__ == "__main__":
 #     executor.start_polling(dp, skip_updates=True)
 
-
 async def main():
     await dp.start_polling(bot)
 
