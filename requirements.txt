@@ -1,8 +1,9 @@
-# Основные зависимости
-python-telegram-bot==20.7
+aiogram==3.13.1
+
 google-api-python-client==2.123.0
 google-auth-oauthlib==1.2.0
 google-auth-httplib2==0.1.0
+
 python-dotenv==1.0.0
-pandas
-numpy
+pandas==2.2.3
+numpy==1.26.4
