@@ -89,10 +89,10 @@ async def next_data(call: types.CallbackQuery):
             print(delta)
 
             txt = f"""{date} {when}
-💊{name}
+{name}
 Прием:
- С {from_.strftime('%Y-%m-%d')}
-ПО {to.strftime('%Y-%m-%d')}
+_С: {from_.strftime('%Y-%m-%d')}
+ПО: {to.strftime('%Y-%m-%d')}
 Осталось: {delta} д.
 """
 

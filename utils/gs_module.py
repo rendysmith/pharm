@@ -23,7 +23,7 @@ print(SAMPLE_RANGE_NAME)
 
 async def get_table_scope():
     SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-    SERVICE_ACCOUNT_FILE = os.path.join(abspath, 'service_account.json')
+    SERVICE_ACCOUNT_FILE = os.path.join(abspath, 'utils', 'service_account.json')
 
     credentials = service_account.Credentials.from_service_account_file(
         SERVICE_ACCOUNT_FILE, scopes=SCOPES)
