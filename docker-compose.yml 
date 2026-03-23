@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  pharm-bot:
+    build: .
+    image: ${DOCKER_USERNAME}/pharm-bot:latest
+    container_name: pharm-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./service_account.json:/app/service_account.json
+      - ./utils:/app/utils
