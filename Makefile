@@ -1,21 +1,43 @@
-.PHONY: build push deploy logs stop clean
+.PHONY: help build push run stop logs clean deploy-local
 
-# Переменные
-DOCKER_USERNAME = rendysmith3000
-IMAGE_NAME = pharm-bot
-SERVER_HOST = 68807
-SERVER_USER = root
+# ====================== НАСТРОЙКИ ======================
+DOCKER_USERNAME ?= rendysmith3000
+IMAGE_NAME      ?= pharm-bot
+TAG             ?= latest
 
-build:
-	docker build -t $(DOCKER_USERNAME)/$(IMAGE_NAME):latest .
+# ====================== КОМАНДЫ ======================
 
-push:
-	docker push $(DOCKER_USERNAME)/$(IMAGE_NAME):latest
+help: ## Показать все доступные команды
+	@echo "Используйте 'make <target>' где <target> это одно из:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-deploy:
-	@echo "Деплой на сервер $(SERVER_HOST)..."
-	ssh $(SERVER_USER)@$(SERVER_HOST) 'cd ~/pharm && \
-		docker pull $(DOCKER_USERNAME)/$(IMAGE_NAME):latest && \
+build: ## Собрать Docker образ
+	docker build -t $(DOCKER_USERNAME)/$(IMAGE_NAME):$(TAG) .
+
+push: build ## Собрать и запушить образ в Docker Hub
+	docker push $(DOCKER_USERNAME)/$(IMAGE_NAME):$(TAG)
+
+run: ## Запустить локально (для разработки)
+	docker run --rm -it \
+		--env-file .env \
+		-v $(PWD)/service_account.json:/app/service_account.json \
+		-v $(PWD)/utils:/app/utils \
+		$(DOCKER_USERNAME)/$(IMAGE_NAME):$(TAG)
+
+logs: ## Посмотреть логи контейнера на сервере
+	ssh root@xxx.xxx.xxx.xxx 'docker logs pharm-bot --tail 100 -f'   # ← замени на свой IP
+
+stop: ## Остановить контейнер на сервере
+	ssh root@xxx.xxx.xxx.xxx 'docker stop pharm-bot || true'
+
+clean: ## Очистка неиспользуемых образов и контейнеров
+	docker system prune -f
+
+# ====================== ДЕПЛОЙ ======================
+deploy-local: ## Деплой вручную через SSH (если нужно)
+	@echo "Деплой на сервер..."
+	ssh root@xxx.xxx.xxx.xxx 'cd ~/pharm && \
+		docker pull $(DOCKER_USERNAME)/$(IMAGE_NAME):$(TAG) && \
 		docker stop pharm-bot || true && \
 		docker rm pharm-bot || true && \
 		docker run -d \
@@ -24,13 +46,4 @@ deploy:
 			--env-file .env \
 			-v $$(pwd)/service_account.json:/app/service_account.json \
 			-v $$(pwd)/utils:/app/utils \
-			$(DOCKER_USERNAME)/$(IMAGE_NAME):latest'
-
-logs:
-	ssh $(SERVER_USER)@$(SERVER_HOST) 'docker logs pharm-bot --tail 50 -f'
-
-stop:
-	ssh $(SERVER_USER)@$(SERVER_HOST) 'docker stop pharm-bot || true'
-
-clean:
-	ssh $(SERVER_USER)@$(SERVER_HOST) 'docker system prune -f'
+			$(DOCKER_USERNAME)/$(IMAGE_NAME):$(TAG)'
