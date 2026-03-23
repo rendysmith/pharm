@@ -3,7 +3,7 @@ name: Deploy Pharm Bot
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:          # позволяет запускать вручную
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -42,25 +42,29 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SERVER_PORT }}
           script: |
+            # Создаём структуру папок
+            mkdir -p ~/pharm/utils
+
             cd ~/pharm
 
-            echo "Pulling new image..."
+            echo "=== Pulling latest image ==="
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/pharm-bot:latest
 
-            echo "Stopping old container..."
+            echo "=== Stopping and removing old container ==="
             docker stop pharm-bot || true
-
-            echo "Removing old container..."
             docker rm pharm-bot || true
 
-            echo "Starting new container..."
+            echo "=== Starting new container ==="
             docker run -d \
               --name pharm-bot \
               --restart unless-stopped \
-              -e BOT_TOKEN="${{ secrets.PHARM_BOT_TOKEN }}" \
+              --env-file .env \
+              -v $(pwd)/.env:/app/.env \
               -v $(pwd)/service_account.json:/app/service_account.json \
               -v $(pwd)/utils:/app/utils \
               ${{ secrets.DOCKERHUB_USERNAME }}/pharm-bot:latest
 
-            echo "Cleaning up..."
+            echo "=== Cleaning up old images ==="
             docker system prune -f
+
+            echo "=== Deployment completed successfully ==="
